@@ -1,54 +1,100 @@
-import google.generativeai as genai
-from google.api_core.exceptions import ResourceExhausted
 import os
 from dotenv import load_dotenv
+from openai import OpenAI
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-print("Gemini API Key Loaded",os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+
+HF_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
+client = OpenAI(
+    base_url="https://router.huggingface.co/v1",
+    api_key=HF_API_KEY,
+)
 
 def gpt_resume_feedback(resume_text):
     prompt = f"""
-    Analyze this resume and provide:
-    1. Strengths
-    2. Weaknesses
-    3. Improvement suggestions
+You are an ATS + hiring manager.
 
-    Resume:
-    {resume_text[:2000]}
-    """
+Analyze the resume and return ONLY valid JSON in the exact format below.
 
-    try:
-        response = model.generate_content(prompt)
-        return response.text
+JSON Schema:
+{{
+  "resume_score": number (0-100),
+  "missing_sections": string[],
+  "ats_keywords_missing": string[],
+  "strengths": [{{"title": string, "detail": string}}],
+  "weaknesses": string[],
+  "experience_improvements": [
+    {{
+      "company": string,
+      "role": string,
+      "bullets": string[]
+    }}
+  ],
+  "project_improvements": [
+    {{
+      "project": string,
+      "improvements": string[]
+    }}
+  ],
+  "skill_matrix": {{
+    "proficient": string[],
+    "familiar": string[],
+    "learning": string[]
+  }},
+  "certification_fixes": string[],
+  "overall_recommendation": string
+}}
 
-    # except ResourceExhausted:
-    #     return "AI quota exceeded. Try again later."
+Rules:
+- Return ONLY JSON
+- No markdown
+- No explanations
+- No extra text
 
-    except Exception as e:
-        return f"AI error: {str(e)}"
+Resume:
+{resume_text[:2500]}
+"""
 
+    completion = client.chat.completions.create(
+        model="moonshotai/Kimi-K2-Instruct-0905",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2
+    )
+
+    return completion.choices[0].message.content
 
 def gpt_jd_match(resume_text, jd_text):
     prompt = f"""
-    Compare the resume with the job description.
-    Provide:
-    - Match summary
-    - Skill gaps
-    - Hiring recommendation
+You are an ATS + hiring manager.
 
-    Resume:
-    {resume_text[:1500]}
+Compare the resume and job description.
+Return ONLY valid JSON.
 
-    Job Description:
-    {jd_text[:1500]}
-    """
+JSON Schema:
+{{
+  "match_percentage": number,
+  "match_summary": string,
+  "matched_skills": string[],
+  "missing_skills": string[],
+  "experience_gaps": string[],
+  "final_hiring_recommendation": string
+}}
 
-    try:
-        response = model.generate_content(prompt)
-        return response.text
+Rules:
+- No markdown
+- No extra text
+- Only JSON
 
-    except ResourceExhausted:
-        return "AI quota exceeded. Try again later."
-    except Exception as e:
-        return f"AI error: {str(e)}"
+Resume:
+{resume_text[:2000]}
+
+Job Description:
+{jd_text[:2000]}
+"""
+
+    completion = client.chat.completions.create(
+        model="moonshotai/Kimi-K2-Instruct-0905",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2
+    )
+
+    return completion.choices[0].message.content
