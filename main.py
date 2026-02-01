@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form
-from parser import extract_text_from_pdf
-from gpt_analysis import gpt_resume_feedback, gpt_jd_match
+from api.parser import extract_text_from_pdf
+from api.gpt_analysis import gpt_resume_feedback, gpt_jd_match
 from fastapi.middleware.cors import CORSMiddleware
 import json
 
