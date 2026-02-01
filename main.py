@@ -8,11 +8,15 @@ app = FastAPI(title="AI Resume Analyzer")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite
+    allow_origins=["*"],  # Vite
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+def read_root():
+    return {"message": "Hello from FastAPI on Render"}
 
 # ---------------- PART 1 ----------------
 @app.post("/resume/analyze")
